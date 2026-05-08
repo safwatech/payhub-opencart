@@ -1,0 +1,13 @@
+{
+  "name": "PayHub",
+  "version": "0.1.0",
+  "author": "Safwa Tech",
+  "link": "https://payhub.ly",
+  "code": "payment_payhub",
+  "description": "Accept Sadad, Moamalat, Mobicash, T-Lync, and Adfali via PayHub.",
+  "license": "MIT",
+  "min": {
+    "opencart": "4.0.0.0",
+    "php": "8.1"
+  }
+}
