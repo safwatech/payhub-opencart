@@ -1,0 +1,32 @@
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ocmod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.sha }}
+      - name: Build ocmod zip
+        run: |
+          STAGE=$(mktemp -d)
+          cp -R upload "${STAGE}/upload"
+          cp install.json "${STAGE}/install.json"
+          cp LICENSE "${STAGE}/LICENSE"
+          cp CHANGELOG.md "${STAGE}/CHANGELOG.md"
+          cp README.md "${STAGE}/README.md"
+          ( cd "${STAGE}" && zip -r -q "${GITHUB_WORKSPACE}/payhub.ocmod.zip" . )
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" payhub.ocmod.zip --clobber

@@ -1,0 +1,77 @@
+{{ header }}{{ column_left }}
+<div id="content" class="payhub-flow">
+    <div class="container">
+        {% if kind == 'redirect' %}
+            <h1>Redirecting…</h1>
+            <form id="payhub-redirect-form" method="{{ next.method|default('POST')|upper }}" action="{{ next.url }}">
+                {% for k, v in next.fields|default({}) %}
+                    <input type="hidden" name="{{ k }}" value="{{ v }}" />
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Continue</button>
+            </form>
+            <script>document.addEventListener('DOMContentLoaded',()=>document.getElementById('payhub-redirect-form').submit());</script>
+
+        {% elseif kind == 'otp_required' %}
+            <h1>Confirm your payment</h1>
+            <p>A one-time code has been sent to <strong>{{ next.masked_destination|default('your phone') }}</strong>.</p>
+            <form id="payhub-otp-form">
+                <input type="text" inputmode="numeric" pattern="\d{4,8}" name="code" autocomplete="one-time-code" required />
+                <button type="submit" class="btn btn-primary">Confirm</button>
+            </form>
+            <p class="payhub-status" hidden></p>
+
+        {% elseif kind == 'qr' %}
+            <h1>Scan to pay</h1>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&data={{ next.qr_payload|url_encode }}" alt="QR" width="320" height="320" />
+            <p><code>{{ next.reference }}</code></p>
+            <p class="payhub-status">Waiting for payment…</p>
+
+        {% elseif kind == 'lightbox' %}
+            <h1>Complete your payment</h1>
+            <div id="payhub-lightbox" data-params='{{ next.params|json_encode|raw }}'></div>
+            {% if next.params.lightbox_js_url %}
+                <script src="{{ next.params.lightbox_js_url }}" defer></script>
+            {% endif %}
+            <p class="payhub-status">Awaiting confirmation…</p>
+        {% else %}
+            <p>Unrecognised PayHub flow.</p>
+        {% endif %}
+
+        <p><a href="{{ cancel_url }}">Cancel order</a></p>
+    </div>
+</div>
+
+<script>
+(function(){
+    var status = document.querySelector('.payhub-status');
+    var orderId = {{ order_id|default(0) }};
+    var POLL_MS = 3000, MAX = 120, n = 0;
+    function setStatus(t, c){ if(!status) return; status.hidden=false; status.textContent=t; status.className='payhub-status '+(c||''); }
+    function poll(){
+        n++; if(n>MAX){ setStatus('Still waiting…','is-error'); return clearInterval(int); }
+        fetch('{{ poll_url }}', { credentials:'same-origin' }).then(r=>r.json()).then(d=>{
+            if(d.status==='succeeded' && d.redirect){ clearInterval(int); window.location=d.redirect; }
+            else if(d.status==='failed'){ clearInterval(int); setStatus('Payment failed.','is-error'); }
+        });
+    }
+    var int = setInterval(poll, POLL_MS);
+    var f = document.getElementById('payhub-otp-form');
+    if (f) {
+        f.addEventListener('submit', function(e){
+            e.preventDefault();
+            var code = (f.code.value||'').trim();
+            if (!/^\d{4,8}$/.test(code)) { setStatus('Invalid OTP.','is-error'); return; }
+            setStatus('Submitting…');
+            fetch('{{ otp_url }}', {
+                method:'POST', credentials:'same-origin',
+                headers:{'content-type':'application/json'},
+                body: JSON.stringify({ order_id: orderId, code: code }),
+            }).then(r=>r.json()).then(d=>{
+                if (d.redirect) window.location=d.redirect;
+                else if (d.error) setStatus(d.error,'is-error');
+            });
+        });
+    }
+})();
+</script>
+{{ footer }}

@@ -1,0 +1,16 @@
+<div class="payhub-checkout">
+    <p>Pay via Sadad, Moamalat, Mobicash, T-Lync, or Adfali.</p>
+    <form action="{{ action }}" method="post" id="payhub-confirm">
+        <div class="form-group">
+            <label for="payhub-msisdn">Mobile number</label>
+            <input id="payhub-msisdn" name="payhub_msisdn" type="tel" pattern="^(218)?9\d{8}$" placeholder="2189XXXXXXXX" required class="form-control" />
+        </div>
+        {% if psp == 'sadad' %}
+        <div class="form-group">
+            <label for="payhub-birth-year">Birth year</label>
+            <input id="payhub-birth-year" name="payhub_birth_year" type="number" min="1900" max="2026" placeholder="1990" required class="form-control" />
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">Continue to PayHub</button>
+    </form>
+</div>
